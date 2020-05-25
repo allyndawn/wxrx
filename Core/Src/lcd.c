@@ -98,11 +98,13 @@ void _LCD_Prepare_Time_Display() {
 }
 
 void _LCD_Prepare_Weather_Display() {
-	strcpy( lcd_buffer, "Waiting for THP No weather data" );
+	//                   0123456789abcdef0123456789abcdef
+	strcpy( lcd_buffer, "Waiting for     weather data    " );
 }
 
 void LCD_Prepare_Location_Display() {
-	strcpy( lcd_buffer, "Waiting for GPS No location data" );
+	//                   0123456789abcdef0123456789abcdef
+	strcpy( lcd_buffer, "Waiting for     location data   " );
 }
 
 void LCD_Set_UART( UART_HandleTypeDef *huart ) {
