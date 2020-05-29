@@ -24,6 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "core.h"
 #include "lcd.h"
 #include "radio.h"
 /* USER CODE END Includes */
@@ -155,10 +156,10 @@ int main(void)
 
   /* Create the queue(s) */
   /* creation of coreToLCD */
-  coreToLCDHandle = osMessageQueueNew (4, 60, &coreToLCD_attributes);
+  coreToLCDHandle = osMessageQueueNew (3, 14, &coreToLCD_attributes);
 
   /* creation of radioToCore */
-  radioToCoreHandle = osMessageQueueNew (4, 60, &radioToCore_attributes);
+  radioToCoreHandle = osMessageQueueNew (3, 24, &radioToCore_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -508,11 +509,14 @@ static void MX_GPIO_Init(void)
 void StartCoreTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+  Core_Set_RTC_Handle( &hrtc );
+  Core_Set_LCD_Message_Queue( coreToLCDHandle );
+  Core_Set_Radio_Message_Queue( radioToCoreHandle );
   /* Infinite loop */
   for(;;)
   {
-    HAL_GPIO_TogglePin( GPIOB, GPIO_PIN_14 );
-    osDelay(200);
+    Core_Run();
+    osThreadYield();
   }
   /* USER CODE END 5 */ 
 }

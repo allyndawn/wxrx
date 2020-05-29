@@ -11,6 +11,13 @@
 #define LCD_STATE_POWER_ON 0
 #define LCD_STATE_READY 1
 
+#ifndef TRUE
+#define TRUE UINT8_C(1)
+#endif
+#ifndef FALSE
+#define FALSE UINT8_C(0)
+#endif
+
 static UART_HandleTypeDef *lcd_huart = 0;
 static osMessageQueueId_t lcd_hqueue = 0;
 static RTC_HandleTypeDef *lcd_hrtc = 0;
@@ -25,21 +32,8 @@ static uint32_t lcd_os_ticks_next_update = 0;
 static char lcd_temp_value[64];
 static char lcd_buffer[64];
 
-static uint8_t lcd_has_thp;
-static int16_t lcd_temperature;
-static uint8_t lcd_humidity;
-static uint16_t lcd_pressure;
-
-static uint8_t lcd_has_location;
-static uint8_t lcd_lat_deg;
-static uint8_t lcd_lat_min;
-static uint8_t mlcd__lat_sec;
-static char lcd_lat_hem;
-static uint8_t lcd_long_deg;
-static uint8_t lcd_long_min;
-static uint8_t lcd_long_sec;
-static char lcd_long_hem;
-
+static uint8_t lcd_has_data = FALSE;
+static lcd_combined_data_type lcd_combined_data;
 static uint8_t lcd_state = LCD_STATE_POWER_ON;
 
 void _LCD_Get_RTC_Date_Time() {
@@ -98,13 +92,68 @@ void _LCD_Prepare_Time_Display() {
 }
 
 void _LCD_Prepare_Weather_Display() {
-	//                   0123456789abcdef0123456789abcdef
-	strcpy( lcd_buffer, "Waiting for     weather data    " );
+	strcpy( lcd_buffer, "   " );
+	itoa( lcd_combined_data.temperature, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "\xDF" );
+	strcat( lcd_buffer, "C " );
+
+	itoa( lcd_combined_data.humidity, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "%RH" );
+	strcat( lcd_buffer, "   ");
+
+	strcat( lcd_buffer, "     ");
+	itoa( lcd_combined_data.pressure, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "hPa" );
 }
 
 void LCD_Prepare_Location_Display() {
-	//                   0123456789abcdef0123456789abcdef
-	strcpy( lcd_buffer, "Waiting for     location data   " );
+	strcpy( lcd_buffer, "   " );
+	itoa( lcd_combined_data.latitude_degrees, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "\xDF" );
+
+	if ( lcd_combined_data.latitude_minutes < 10 ) {
+		strcat( lcd_buffer, " " );
+	}
+	itoa( lcd_combined_data.latitude_minutes, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "'" );
+
+	if ( lcd_combined_data.latitude_seconds < 10 ) {
+		strcat( lcd_buffer, " " );
+	}
+	itoa( lcd_combined_data.latitude_seconds, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "\"" );
+
+	strcat( lcd_buffer, " " );
+	strcat( lcd_buffer, "N" ); // TODO lcd_combined_data.latitude_hem
+
+	strcat( lcd_buffer, "    " );
+
+	itoa( lcd_combined_data.longitude_degrees, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "\xDF" );
+
+	if ( lcd_combined_data.longitude_minutes < 10 ) {
+		strcat( lcd_buffer, " " );
+	}
+	itoa( lcd_combined_data.longitude_minutes, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "'" );
+
+	if ( lcd_combined_data.longitude_seconds < 10 ) {
+		strcat( lcd_buffer, " " );
+	}
+	itoa( lcd_combined_data.longitude_seconds, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "\"" );
+
+	strcat( lcd_buffer, " " );
+	strcat( lcd_buffer, "W" ); // TODO lcd_combined_data.longitude_hem
 }
 
 void LCD_Set_UART( UART_HandleTypeDef *huart ) {
@@ -147,35 +196,38 @@ void LCD_Run() {
 	lcd_os_ticks_next_update = lcd_os_ticks_now + lcd_os_ticks_per_second;
 
 	if ( LCD_STATE_READY == lcd_state ) {
-		// Fetch the current time from the RTC
-		_LCD_Get_RTC_Date_Time();
+		if ( ! lcd_has_data ) {
+			strcpy( lcd_buffer, "Waiting for datafrom remote     " );
+		} else {
+			// Fetch the current time from the RTC
+			_LCD_Get_RTC_Date_Time();
 
-		uint32_t ticks_as_seconds = lcd_os_ticks_now / lcd_os_ticks_per_second;
+			uint32_t ticks_as_seconds = lcd_os_ticks_now / lcd_os_ticks_per_second;
 
-		// Clear the LCD
-		lcd_buffer[0] = 0x7c;
-		lcd_buffer[1] = 0x2d;
-		HAL_UART_Transmit( lcd_huart, (uint8_t *) lcd_buffer, 2, 40 );
+			// Clear the LCD
+			lcd_buffer[0] = 0x7c;
+			lcd_buffer[1] = 0x2d;
+			HAL_UART_Transmit( lcd_huart, (uint8_t *) lcd_buffer, 2, 40 );
 
-		// Use modulus to rotate to one of three displays each second
-		uint8_t ticks_mod = ticks_as_seconds % 9;
+			// Use modulus to rotate to one of three displays each second
+			uint8_t ticks_mod = ticks_as_seconds % 9;
 
-		// 0, 1, 2: Date and time
-		if ( ticks_mod < 3 ) {
-			_LCD_Prepare_Time_Display();
+			// 0, 1, 2: Date and time
+			if ( ticks_mod < 3 ) {
+				_LCD_Prepare_Time_Display();
+			}
+
+			// 3, 4, 5: Temp, Humidity, Press
+			if ( ticks_mod == 3 || ticks_mod == 4 || ticks_mod == 5 ) {
+				_LCD_Prepare_Weather_Display();
+			}
+
+			// 6, 7, 8: Location
+			if ( ticks_mod == 6 || ticks_mod == 7 || ticks_mod == 8 ) {
+				LCD_Prepare_Location_Display();
+			}
+
+			HAL_UART_Transmit( lcd_huart, (uint8_t *) lcd_buffer, strlen( lcd_buffer ), 40 );
 		}
-
-		// 3, 4, 5: Temp, Humidity, Press
-		if ( ticks_mod == 3 || ticks_mod == 4 || ticks_mod == 5 ) {
-			_LCD_Prepare_Weather_Display();
-		}
-
-		// 6, 7, 8: Location
-		if ( ticks_mod == 6 || ticks_mod == 7 || ticks_mod == 8 ) {
-			LCD_Prepare_Location_Display();
-		}
-
-
-		HAL_UART_Transmit( lcd_huart, (uint8_t *) lcd_buffer, strlen( lcd_buffer ), 40 );
 	}
 }
