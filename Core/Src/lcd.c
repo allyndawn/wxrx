@@ -96,18 +96,18 @@ void _LCD_Prepare_Time_Display() {
 
 void _LCD_Prepare_Weather_Display() {
 	strcpy( lcd_buffer, "   " );
-	itoa( lcd_combined_data.temperature, lcd_temp_value, 10 );
+	itoa( 32 + lcd_combined_data.temperature * 9 / 50, lcd_temp_value, 10 );
 	strcat( lcd_buffer, lcd_temp_value );
 	strcat( lcd_buffer, "\xDF" );
-	strcat( lcd_buffer, "C " );
+	strcat( lcd_buffer, "F " );
 
-	itoa( lcd_combined_data.humidity, lcd_temp_value, 10 );
+	itoa( lcd_combined_data.humidity / 10, lcd_temp_value, 10 );
 	strcat( lcd_buffer, lcd_temp_value );
 	strcat( lcd_buffer, "%RH" );
 	strcat( lcd_buffer, "   ");
 
 	strcat( lcd_buffer, "     ");
-	itoa( lcd_combined_data.pressure, lcd_temp_value, 10 );
+	itoa( lcd_combined_data.pressure / 10, lcd_temp_value, 10 );
 	strcat( lcd_buffer, lcd_temp_value );
 	strcat( lcd_buffer, "hPa" );
 }
