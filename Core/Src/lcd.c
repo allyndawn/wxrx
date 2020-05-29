@@ -22,12 +22,15 @@ static UART_HandleTypeDef *lcd_huart = 0;
 static osMessageQueueId_t lcd_hqueue = 0;
 static RTC_HandleTypeDef *lcd_hrtc = 0;
 static HAL_StatusTypeDef lcd_rtc_status = HAL_OK;
+static osStatus_t lcd_os_status;
 
 static RTC_TimeTypeDef lcd_time = { 0 };
 static RTC_DateTypeDef lcd_date = { 0 };
 static uint32_t lcd_os_ticks_per_second = 0;
 static uint32_t lcd_os_ticks_now = 0;
 static uint32_t lcd_os_ticks_next_update = 0;
+
+static uint8_t lcd_waiting_count = 0;
 
 static char lcd_temp_value[64];
 static char lcd_buffer[64];
@@ -163,6 +166,18 @@ void _LCD_Prepare_Signal_Display() {
 	strcat( lcd_buffer, "dBm" );
 }
 
+void _LCD_Process_Queue() {
+	// Do we have a message queue handle?
+	if ( ! lcd_hqueue ) {
+		return;
+	}
+
+	lcd_os_status = osMessageQueueGet( lcd_hqueue, (void *) &lcd_combined_data, NULL, 0U );
+	if ( lcd_os_status == osOK ) {
+		lcd_has_data = TRUE;
+	}
+}
+
 void LCD_Set_UART( UART_HandleTypeDef *huart ) {
 	lcd_huart = huart;
 }
@@ -182,7 +197,7 @@ void LCD_Init() {
 
 void LCD_Run() {
 	// Update ourselves with any inbound messages
-	// this->processQueue();
+	_LCD_Process_Queue();
 
 	// If we've not yet spoken to the LCD
 	// Set it up the way we want it
@@ -204,7 +219,19 @@ void LCD_Run() {
 
 	if ( LCD_STATE_READY == lcd_state ) {
 		if ( ! lcd_has_data ) {
-			strcpy( lcd_buffer, "Waiting for     remote unit" );
+			if ( 0 == lcd_waiting_count ) {
+				strcpy( lcd_buffer, "Waiting for     remote unit     " );
+			} else if ( 1 == lcd_waiting_count ) {
+				strcpy( lcd_buffer, "Waiting for     remote unit.    " );
+			} else if ( 2 == lcd_waiting_count ) {
+				strcpy( lcd_buffer, "Waiting for     remote unit..   " );
+			} else {
+				strcpy( lcd_buffer, "Waiting for     remote unit...  " );
+			}
+			lcd_waiting_count++;
+			if ( lcd_waiting_count > 3 ) {
+				lcd_waiting_count = 0;
+			}
 		} else {
 			// Fetch the current time from the RTC
 			_LCD_Get_RTC_Date_Time();
@@ -238,8 +265,10 @@ void LCD_Run() {
 			if ( ticks_mod == 8 || ticks_mod == 9 ) {
 				_LCD_Prepare_Signal_Display();
 			}
-
-			HAL_UART_Transmit( lcd_huart, (uint8_t *) lcd_buffer, strlen( lcd_buffer ), 40 );
 		}
+
+		HAL_UART_Transmit( lcd_huart, (uint8_t *) lcd_buffer, strlen( lcd_buffer ), 40 );
 	}
+
+	osDelay( 250 );
 }

@@ -88,7 +88,7 @@ void _Core_Handle_Radio_Queue() {
 	}
 
 	// Listen for radio messages
-	core_hal_status = osMessageQueueGet( core_radio_hqueue, (void *) &radio_packet, NULL, 0U );
+	core_os_status = osMessageQueueGet( core_radio_hqueue, (void *) &radio_packet, NULL, 0U );
 	if ( core_os_status == osOK ) {
 		_Core_Update_RTC();
 		_Core_Update_LCD();
