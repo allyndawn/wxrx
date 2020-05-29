@@ -109,7 +109,7 @@ void _LCD_Prepare_Weather_Display() {
 	strcat( lcd_buffer, "hPa" );
 }
 
-void LCD_Prepare_Location_Display() {
+void _LCD_Prepare_Location_Display() {
 	strcpy( lcd_buffer, "   " );
 	itoa( lcd_combined_data.latitude_degrees, lcd_temp_value, 10 );
 	strcat( lcd_buffer, lcd_temp_value );
@@ -156,6 +156,13 @@ void LCD_Prepare_Location_Display() {
 	strcat( lcd_buffer, "W" ); // TODO lcd_combined_data.longitude_hem
 }
 
+void _LCD_Prepare_Signal_Display() {
+	strcpy( lcd_buffer, "RSSI:" );
+	itoa( lcd_combined_data.rssi, lcd_temp_value, 10 );
+	strcat( lcd_buffer, lcd_temp_value );
+	strcat( lcd_buffer, "dBm" );
+}
+
 void LCD_Set_UART( UART_HandleTypeDef *huart ) {
 	lcd_huart = huart;
 }
@@ -197,7 +204,7 @@ void LCD_Run() {
 
 	if ( LCD_STATE_READY == lcd_state ) {
 		if ( ! lcd_has_data ) {
-			strcpy( lcd_buffer, "Waiting for datafrom remote     " );
+			strcpy( lcd_buffer, "Waiting for     remote unit" );
 		} else {
 			// Fetch the current time from the RTC
 			_LCD_Get_RTC_Date_Time();
@@ -210,7 +217,7 @@ void LCD_Run() {
 			HAL_UART_Transmit( lcd_huart, (uint8_t *) lcd_buffer, 2, 40 );
 
 			// Use modulus to rotate to one of three displays each second
-			uint8_t ticks_mod = ticks_as_seconds % 9;
+			uint8_t ticks_mod = ticks_as_seconds % 10;
 
 			// 0, 1, 2: Date and time
 			if ( ticks_mod < 3 ) {
@@ -222,9 +229,14 @@ void LCD_Run() {
 				_LCD_Prepare_Weather_Display();
 			}
 
-			// 6, 7, 8: Location
-			if ( ticks_mod == 6 || ticks_mod == 7 || ticks_mod == 8 ) {
-				LCD_Prepare_Location_Display();
+			// 6, 7: Location
+			if ( ticks_mod == 6 || ticks_mod == 7 ) {
+				_LCD_Prepare_Location_Display();
+			}
+
+			// 8, 9: Location
+			if ( ticks_mod == 8 || ticks_mod == 9 ) {
+				_LCD_Prepare_Signal_Display();
 			}
 
 			HAL_UART_Transmit( lcd_huart, (uint8_t *) lcd_buffer, strlen( lcd_buffer ), 40 );

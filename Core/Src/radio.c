@@ -113,6 +113,8 @@ static uint8_t radio_mode = RADIO_MODE_UNKNOWN;
 static volatile uint8_t radio_buffer_length = 0;
 static uint8_t radio_buffer[RADIO_MAX_MESSAGE_LEN];
 
+static radio_packet_data_type radio_packet;
+
 static int8_t radio_rssi = 0;
 
 static uint8_t radio_loop_count = 0;
@@ -348,52 +350,16 @@ void Radio_Receive() {
 		uint8_t raw_rssi = _Radio_SPI_Read( RADIO_REG_24_RSSI );
 		radio_rssi = - (int8_t) ( raw_rssi >> 1 );
 
-		// TODO - send it all to core
+		// Send it all to core
+		__builtin_memcpy( (void *) &radio_packet, (void *) &radio_buffer, sizeof( radio_packet_data_type ) );
+
+		// Store the RSSI at the end of the packet (overwriting anything received)
+		radio_packet.rssi = radio_rssi;
+
+		osMessageQueuePut( radio_hqueue, (void *) &radio_packet, 0U, 0U );
 	}
 
 	_Radio_Set_Mode_Rx();
-}
-
-void _Radio_Transmit_Test() {
-	radio_buffer[0] = 20;		// Size of the Frame
-	radio_buffer[1] = 0x0;		// Destination address
-	radio_buffer[2] = 0x0;		// Source address
-	radio_buffer[3] = 0x0;		// Control byte
-
-	radio_buffer[4] = 0x1;		// Version
-	radio_buffer[5] = 0x10;		// Reserved
-	radio_buffer[6] = 0x20;		// Reserved
-	radio_buffer[7] = 0x30;		// Reserved
-
-	radio_buffer[8] = 0x40;		// Misc
-	radio_buffer[9] = 0x50;		// Misc
-	radio_buffer[10] = 0x60;	// Misc
-	radio_buffer[11] = 0x70;	// Misc
-
-	radio_buffer[12] = 0x80;	// Misc
-	radio_buffer[13] = 0x90;	// Misc
-	radio_buffer[14] = 0xA0;	// Misc
-	radio_buffer[15] = 0xB0;	// Misc
-
-	radio_buffer[16] = 0xC0;	// Misc
-	radio_buffer[17] = 0xD0;	// Misc
-	radio_buffer[18] = 0xE0;	// Misc
-	radio_buffer[19] = 0xF0;	// Misc
-
-	_Radio_SPI_FIFO_Write( &(radio_buffer[0]), 20 );
-
-	// Start the transmitter
-	_Radio_Set_Mode_Tx();
-
-	uint8_t timeout_counter = 0;
-	uint8_t flags = 0;
-	do {
-		flags = _Radio_SPI_Read( RADIO_REG_28_IRQFLAGS2 );
-		HAL_Delay( 1 );
-		timeout_counter++;
-	} while ( ( timeout_counter < RADIO_MAX_MODE_TIMEOUT ) && !( flags & RADIO_IRQFLAGS2_PACKETSENT ) );
-
-	_Radio_Set_Mode_Idle();
 }
 
 /**

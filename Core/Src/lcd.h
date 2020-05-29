@@ -22,7 +22,8 @@ typedef struct {
 	uint8_t longitude_minutes;	// 0 to 59
 	uint8_t longitude_seconds;	// 0 to 59
 	char longitude_hem;			// W or E
-} lcd_combined_data_type; // 14 bytes
+	int8_t rssi;				// -115 to 0 dBm, at receiver
+} lcd_combined_data_type; // 15 bytes
 
 void LCD_Set_UART( UART_HandleTypeDef *huart );
 void LCD_Set_Message_Queue( osMessageQueueId_t hqueue );

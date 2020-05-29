@@ -156,10 +156,10 @@ int main(void)
 
   /* Create the queue(s) */
   /* creation of coreToLCD */
-  coreToLCDHandle = osMessageQueueNew (3, 14, &coreToLCD_attributes);
+  coreToLCDHandle = osMessageQueueNew (3, 15, &coreToLCD_attributes);
 
   /* creation of radioToCore */
-  radioToCoreHandle = osMessageQueueNew (3, 24, &radioToCore_attributes);
+  radioToCoreHandle = osMessageQueueNew (3, 25, &radioToCore_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
