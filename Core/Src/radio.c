@@ -335,6 +335,7 @@ void _Radio_Set_Tx_Power( int8_t power ) {
 }
 
 void Radio_Receive() {
+	uint8_t raw_rssi = _Radio_SPI_Read( RADIO_REG_24_RSSI );
 	uint8_t irq_flags = _Radio_SPI_Read( RADIO_REG_28_IRQFLAGS2 );
 
 	if ( ( irq_flags & RADIO_IRQFLAGS2_PAYLOADREADY ) != 0 ) {
@@ -347,7 +348,6 @@ void Radio_Receive() {
 		// The register returns a positive number in 0.5 dB steps
 		// So we need to divide by 2 and switch the sign to get RSSI in dBm
 		// (-115 to 0 dBm)
-		uint8_t raw_rssi = _Radio_SPI_Read( RADIO_REG_24_RSSI );
 		radio_rssi = - (int8_t) ( raw_rssi >> 1 );
 
 		// Send it all to core
@@ -357,6 +357,10 @@ void Radio_Receive() {
 		radio_packet.rssi = radio_rssi;
 
 		osMessageQueuePut( radio_hqueue, (void *) &radio_packet, 0U, 0U );
+
+		// Toggle the Blue and Green LEDs each time we process a packet
+		HAL_GPIO_TogglePin( GPIOB, GPIO_PIN_7 );
+		HAL_GPIO_TogglePin( GPIOB, GPIO_PIN_0 );
 	}
 
 	_Radio_Set_Mode_Rx();
@@ -401,6 +405,10 @@ uint8_t Radio_Init() {
 	_Radio_Reset_Encryption_Key();
 	_Radio_Set_Tx_Power( 10 ); // +10 dBm
 
+	// Start with the Blue LED on and the Green LED off
+	HAL_GPIO_WritePin( GPIOB, GPIO_PIN_7, GPIO_PIN_SET );
+	HAL_GPIO_WritePin( GPIOB, GPIO_PIN_0, GPIO_PIN_RESET );
+
 	return RADIO_SUCCESS;
 }
 
@@ -427,13 +435,14 @@ void Radio_Run() {
 
 	// If we haven't spoken to the radio yet, try again
 	if ( RADIO_MODE_UNKNOWN == radio_mode ) {
+		HAL_GPIO_TogglePin( GPIOB, GPIO_PIN_14 );
 		Radio_Init();
 	} else {
+		HAL_GPIO_WritePin( GPIOB, GPIO_PIN_14, GPIO_PIN_SET );
 		Radio_Receive();
 	}
 
 	// Update our status LEDs
-	HAL_GPIO_TogglePin( GPIOB, GPIO_PIN_14 );
 
 	// Sleep before returning
 	osDelay( 500 );
