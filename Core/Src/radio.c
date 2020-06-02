@@ -275,10 +275,23 @@ void _Radio_Set_Modem_Config() {
 	_Radio_SPI_Write( RADIO_REG_06_FDEVLSB, 0x52 );
 
 	// RX BW
-	_Radio_SPI_Write( RADIO_REG_19_RXBW, 0xF4 );
+	// See data sheet table 26 pg. 67
+	// and table 14 pg. 26
+	// 7:5 DC Cutoff Frequency
+	// 4:3 RX BW Mantissa
+	// 2:0 RX BW Exponent
+	// 0xF4: 111 10 100: 20.8 kHz
+	// 0xF3: 111 10 011: 41.7 kHz
+	// 0xE3: 111 00 011: 62.5 kHz
+	// 0xE1: 111 01 001: 200 kHz
+	// 0xE0: 111 01 000: 400 kHz
+	_Radio_SPI_Write( RADIO_REG_19_RXBW, 0xE3 );
 
 	// AFC BW
-	_Radio_SPI_Write( RADIO_REG_1A_AFCBW, 0xF4 );
+	// 7:5 DC Cutoff Frequency
+	// 4:3 RX BW Mantissa
+	// 2:0 RX BW Exponent
+	_Radio_SPI_Write( RADIO_REG_1A_AFCBW, 0xE3 );
 
 	// Packet Config (1)
 	uint8_t config = RADIO_PACKETCONFIG1_PACKETFORMAT_VARIABLE |
