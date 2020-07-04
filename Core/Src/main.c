@@ -49,6 +49,7 @@ RTC_HandleTypeDef hrtc;
 SPI_HandleTypeDef hspi1;
 
 UART_HandleTypeDef huart7;
+UART_HandleTypeDef huart2;
 
 /* Definitions for coreTask */
 osThreadId_t coreTaskHandle;
@@ -91,6 +92,7 @@ static void MX_GPIO_Init(void);
 static void MX_RTC_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_UART7_Init(void);
+static void MX_USART2_UART_Init(void);
 void StartCoreTask(void *argument);
 void StartRadioTask(void *argument);
 void StartLCDTask(void *argument);
@@ -135,6 +137,7 @@ int main(void)
   MX_RTC_Init();
   MX_SPI1_Init();
   MX_UART7_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -374,6 +377,39 @@ static void MX_UART7_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_HalfDuplex_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -512,6 +548,7 @@ void StartCoreTask(void *argument)
   Core_Set_RTC_Handle( &hrtc );
   Core_Set_LCD_Message_Queue( coreToLCDHandle );
   Core_Set_Radio_Message_Queue( radioToCoreHandle );
+  Core_Set_Debug_UART( &huart2 );
   /* Infinite loop */
   for(;;)
   {

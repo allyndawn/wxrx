@@ -13,6 +13,7 @@
 void Core_Set_RTC_Handle( RTC_HandleTypeDef *hrtc );
 void Core_Set_LCD_Message_Queue( osMessageQueueId_t hqueue );
 void Core_Set_Radio_Message_Queue( osMessageQueueId_t hqueue );
+void Core_Set_Debug_UART( UART_HandleTypeDef *huart );
 void Core_Run();
 
 #endif // __CORE_H
