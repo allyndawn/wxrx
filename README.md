@@ -1,5 +1,7 @@
 # WX-RX (Indoor Unit / Receiver)
 
+![Indoor Unit / Receiver](/Media/wx-rx.png)
+
 ## Overview
 
 You’ve found the GitHub repository for the indoor unit / receiver part of my wireless weather station, a.k.a. WX-RX.
